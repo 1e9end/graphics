@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<!-- 
+    Raymarched shapes demo
+    Raymarched with hard shadows
+    Phong shading model, rendered with webgl
+    
+    --TODO--
+    Ambient Occulusion
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+
+    <!-- OG Meta Tags for Social Media Queries --> 
+    <meta property="og:title" content="Graphics Showcase"/> 
+    <!-- Thumbnail here <meta property="og:image" content="https://raw.githubusercontent.com/1e9end/minesweeper"/> -->
+    <meta property="og:description" content="1egend's Computer Graphics & Rendering showcase!" /> 
+    <meta property="og:url" content= "https://1e9end.github.io/graphics"/> 
+    <meta property="og:type" content="website"/>
+
+    <title>Raymarched fractals</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: auto;
+        }
+        #canvas {
+            float: left;
+            height: 100vh;
+            width: 100vh;
+        }
+        #ui{
+            text-align: center;
+            float: left;
+        }
+        #title-wrapper{
+            font-family: "Trebuchet MS", sans-serif;
+            font-weight: bold;
+            font-size: 2vw;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body> 
+    <canvas id = "canvas">
+        Your browser does not currently support HTML5. <br> Please try Chrome, Firefox, or Edge.
+    </canvas>
+    <div id = "ui">
+        <div id = "title-wrapper">
+            Raymarched Fractals Demo
+        <div>
+        <select name="fractals" id="fractals" onchange="updateFractal()">
+            <option value="0">Sierpenski Pyramid</option>
+            <option value="1">Mandelbox</option>
+        </select>
+    </div>
+</body>
+<script id = "vts" type = "vertex-shader">
+    attribute vec4 position;
+    precision highp float;
+    
+    void main(){
+        gl_Position = position;
+    }
+</script>
+<script id = "fts" type = "fragment-shader">
+    precision highp float;
+    uniform vec2 res;
+    uniform float time;
+
+    uniform int fractal;
+    uniform float camZ;
+    uniform float THICC;
+    
+    float PI = 3.14;
+    float EPSILON = 0.001;
+
+    // rotation matrix around origin
+    vec3 rotate(vec3 p, vec3 r){
+        // d --> r
+        r.x *= PI/180.0;
+        r.y *= PI/180.0;
+        r.z *= PI/180.0;
+        mat3 xRot = mat3 (1,0,0,
+                          0,cos(r.x),-sin(r.x),
+                          0,sin(r.x), cos(r.x));
+        mat3 yRot = mat3 (cos(r.y),0,sin(r.y),
+                          0,1,0,
+                          -sin(r.y),0,cos(r.y));
+        mat3 zRot = mat3 (cos(r.z),-sin(r.z),0,
+                          sin(r.z),cos(r.z),0,
+                          0,0,1);
+        return xRot * yRot * zRot * p;
+    }
+    //http://blog.hvidtfeldts.net/index.php/2011/08/distance-estimated-3d-fractals-iii-folding-space/
+    float pyramidDE(vec3 p){
+        float scale = 1.75;
+        float offset = 2.5;
+        for (int n = 0; n < 16; ++n) {
+            if(p.x + p.y < 0.0){ 
+                p.xy = - p.yx;
+            } 
+            if(p.x + p.z < 0.0){ 
+                p.xz = - p.zx;
+            } 
+            if(p.y + p.z < 0.0){ 
+                p.zy = - p.yz;
+            } 
+            p = p * scale - offset*(scale - 1.0);
+        }
+    
+        return length(p) * pow(scale, - 16.0);
+    }
+
+    
+    float foldingLimit = 1.50;
+    float fixedRadius2 = 2.0;
+    float minRadius2 = 0.0;
+    void sphereFold(inout vec3 p, inout float dp) {
+        float r2 = dot(p, p);
+        float temp = r2 < minRadius2 ? fixedRadius2/minRadius2 : (r2 < fixedRadius2 ? fixedRadius2/r2 : 1.0);
+        p *= temp;
+        dp *= temp;
+    }
+
+    void boxFold(inout vec3 p, inout float dp) {
+        p = clamp(p, -foldingLimit, foldingLimit) * 2.0 - p;
+    }
+
+    float mandelboxDE(vec3 p){
+        float scale = 2.48;
+        vec3 offset = p;
+        float dr = 1.0;
+
+        for (int n = 0; n < 7; ++n) {
+            boxFold(p, dr);
+            sphereFold(p, dr);
+            p = scale * p + offset;
+            dr = dr * abs(scale) + 1.0;
+        }
+        return length(p)/abs(dr);
+    }
+    float DE(vec3 p){
+        if (fractal == 0){
+            return pyramidDE(p);
+        }
+        if (fractal == 1){
+            return mandelboxDE(p);
+        }
+    }
+    vec3 approxNormal(vec3 p)
+    {
+    	return normalize(vec3(
+    		DE(p + vec3(EPSILON, 0, 0)) - DE(p - vec3(EPSILON, 0, 0)),
+    		DE(p + vec3(0, EPSILON, 0)) - DE(p - vec3(0, EPSILON, 0)),
+    		DE(p + vec3(0, 0, EPSILON)) - DE(p - vec3(0, 0, EPSILON))));
+    }
+
+    float hardshadow (vec3 origin, vec3 direction, float smoothness){
+        float distance = EPSILON;
+        for (float iters = 0.0; iters < 200.0; ++iters){
+            vec3 pos = origin + distance * direction;
+            float nextDistance = DE(pos);
+            distance += nextDistance;
+            if (abs(nextDistance) < EPSILON){
+                return distance * smoothness;
+            }
+        }
+        return 1.0;
+    }
+
+    vec3 raymarch(vec3 origin, vec3 direction, vec3 light){
+        float distance = 0.0;
+        for (float iters = 0.0; iters < 200.0; ++iters){
+            vec3 pos = origin + distance * direction;
+            float nextDistance = DE(pos);
+            distance += nextDistance;
+            if (abs(nextDistance) < THICC){ 
+                vec3 normal = approxNormal(pos);
+                float diffuse = max(0.0, dot(normal, light)); 
+                // https://learnopengl.com/Lighting/Basic-Lighting
+                vec3 reflected = reflect(direction, normal);
+                float specular = pow(max(dot(reflected, light), 0.0), 16.0); 
+                float shade = diffuse * 0.7 + specular * 0.3;
+                float occlusion = 1.0;
+                vec3 ambient = vec3(1.0, 1.0, 1.0);
+                return shade * ambient * occlusion * hardshadow(pos, light, .1);
+            }
+            if (distance > 100.0){
+                break;
+            }
+        }
+        // Background blue
+        return vec3(0.0, 0.0, 0.5);
+    }
+    
+    void main(){
+        // window relative -> clip space
+        vec2 uv = gl_FragCoord.xy * res - 1.0;
+        // directional light
+        vec3 light = normalize(vec3(-1.0, 0.8, -1.0)); 
+
+        //camera
+        vec3 rotation =  vec3(0.0, mod(time, 360.0) * 30.0 + 45.0, 55.0);
+        vec3 cameraPosition = vec3(0.0, 0.0, camZ);
+
+        gl_FragColor = vec4(raymarch(rotate(cameraPosition, rotation), rotate(normalize(vec3(uv, 1.0)), rotation), light), 1.0);
+    }
+    
+</script>
+<script src = "https://cdn.jsdelivr.net/gh/1e9end/Impact/main.js"></script><!-- My WebGL library -->
+<script src = "main.js"></script>
+<script></script>
+</html>
