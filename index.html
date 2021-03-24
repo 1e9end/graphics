@@ -23,7 +23,7 @@
     <style>
         body {
             margin: 0;
-            overflow: auto;
+            overflow: hidden;
         }
         #canvas {
             float: left;
@@ -31,13 +31,12 @@
             width: 100vh;
         }
         #ui{
+            word-wrap: normal;
             text-align: center;
             float: left;
         }
         #title-wrapper{
             font-family: "Trebuchet MS", sans-serif;
-            font-weight: bold;
-            font-size: 2vw;
             margin-top: 30px;
         }
     </style>
@@ -48,7 +47,11 @@
     </canvas>
     <div id = "ui">
         <div id = "title-wrapper">
-            Raymarched Fractals Demo
+            <h1>Raymarched Fractals Demo</h1>
+            <p>Collection of cool 3D fractals.</p>
+            <p>Rendered in WebGL, with boilerplate help from my own WebGL library <a href = "https://www.github.com/1e9end/Impact">Impact</a></p>
+            <p>Rendering algorithms all self written using Linear Algebra & light tracing techniques.</p>
+            <p>Includes: Ambient lighting, Specular lighting, Dynamic Camera & Scale, Hard shadows, (occlusion to come)</p>
         <div>
         <select name="fractals" id="fractals" onchange="updateFractal()">
             <option value="0">Sierpenski Pyramid</option>
