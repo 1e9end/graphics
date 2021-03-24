@@ -53,6 +53,8 @@
         <select name="fractals" id="fractals" onchange="updateFractal()">
             <option value="0">Sierpenski Pyramid</option>
             <option value="1">Mandelbox</option>
+            <option value="2">Mandelbulb</option>
+            <option value="3">Menger Sponge</option>
         </select>
     </div>
 </body>
@@ -141,6 +143,70 @@
         }
         return length(p)/abs(dr);
     }
+        
+    float mandelbulbDE(vec3 p) {
+        float power = 8.0;
+        vec3 z = p;
+        
+        float dr = 1.0;
+        float r;
+        
+        for (int n = 0; n < 20; ++n) {
+            r = length(z);
+            if (r > 2.0){
+                break;
+            }
+            
+            float theta = acos(z.z / r);
+            float phi = atan(z.y, z.x);
+            
+            dr = pow(r, power - 1.0) * power * dr + 1.0;
+            
+            float zr = pow(r, power);
+            
+            theta *= power;
+            phi *= power;
+            
+            z = p + vec3(sin(theta) * cos(phi), sin(phi) * sin(theta), cos(theta)) * zr;
+        }
+        
+        return 0.5 * log(r) * r / dr;
+    }
+    
+    //distance to box 
+    float sdBox(vec3 p, vec3 b){
+        vec3 d = abs(p) - b;
+        return length(max(d, 0.0)) + min(max(d.x, max(d.y, d.z)), 0.0);
+    }
+    float mengerSpongeDE(vec3 p){
+        vec3 n1 = normalize(vec3(1, 0, -1));
+        vec3 n2 = normalize(vec3(0, 1, -1));
+        float s = 1.;
+        
+        for (int n = 0; n < 5; ++n) {        
+            //folding
+            p = abs(p);  
+            p -= 2. * min(0., dot(p,n1)) * n1; 
+            p -= 2. * min(0., dot(p,n2)) * n2; 
+            //scale
+            
+            p *= 3.; 
+            s /= 3.;
+            
+            //offset
+            p.z -=  1.;
+            p.z  = -abs(p.z);
+            p.z +=  1.;
+            p.x -= 2.;
+            p.y -= 2.;      
+        }
+
+        float dis = sdBox(p, vec3(1));
+              dis *= s;
+        
+        return dis; 
+    }
+
     float DE(vec3 p){
         if (fractal == 0){
             return pyramidDE(p);
@@ -148,7 +214,14 @@
         if (fractal == 1){
             return mandelboxDE(p);
         }
+        if (fractal == 2){
+            return mandelbulbDE(p);
+        }
+        if (fractal == 3){
+            return mengerSpongeDE(p);
+        }
     }
+
     vec3 approxNormal(vec3 p)
     {
     	return normalize(vec3(
@@ -159,14 +232,18 @@
 
     float hardshadow (vec3 origin, vec3 direction, float smoothness){
         float distance = EPSILON;
-        for (float iters = 0.0; iters < 200.0; ++iters){
+        float light = 1.0;
+        float eps = 0.1;
+        for (float iters = 0.0; iters < 100.0; ++iters){
             vec3 pos = origin + distance * direction;
             float nextDistance = DE(pos);
             distance += nextDistance;
-            if (abs(nextDistance) < EPSILON){
+            light = min(light, 1.0 - (eps - distance) / eps);
+            if (abs(nextDistance) < EPSILON/2.0){
                 return distance * smoothness;
             }
         }
+        //return max(light, 0.0);
         return 1.0;
     }
 

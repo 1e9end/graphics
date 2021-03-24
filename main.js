@@ -36,15 +36,22 @@ function updateFractal(){
     var fractalN = document.getElementById("fractals").value;
     var camZ, THICC;
     switch(+fractalN){
+        case 3:
+            camZ = -3.0;
+            THICC = 0.001;
+        break;
+        case 2:
+            camZ = -2.0;
+            THICC = 0.001;
+        break;
         case 1:
             camZ = -16.0;
             THICC = 0.03;
         break;
-        case 0:
+        case 0: default:
             camZ = -6.0;
             THICC = 0.001;
     }
-    console.log(camZ);
     gl.uniform1i(fractalL, fractalN);
     gl.uniform1f(camZL, camZ);
     gl.uniform1f(THICCL, THICC);
