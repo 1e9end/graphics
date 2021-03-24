@@ -6,6 +6,8 @@ Rendered in WebGL with the help of my own WebGL boilerplate library [Impact](htt
 ## Raymarched Fractals
 - Sierpenski Pyramid
 - Mandelbox
+- Mandelbulb
+- Menger Sponge
 
 TODO
 - Ambient occlusion
