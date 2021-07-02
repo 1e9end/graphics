@@ -11,5 +11,4 @@ Rendered in WebGL with the help from my own WebGL boilerplate library [Impact](h
 
 TODO
 - Ambient occlusion
-- User camera movement
-- UI to control graphics quality
+- User Control
