@@ -13,52 +13,97 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
 
     <!-- OG Meta Tags for Social Media Queries --> 
-    <meta property="og:title" content="Graphics Showcase"/> 
-    <!-- Thumbnail here <meta property="og:image" content="https://raw.githubusercontent.com/1e9end/minesweeper"/> -->
-    <meta property="og:description" content="1egend's Computer Graphics & Rendering showcase!" /> 
-    <meta property="og:url" content= "https://1e9end.github.io/graphics"/> 
+    <meta property="og:title" content="CERXA Engine"/> 
+    <!-- 
+    Thumbnail here <meta property="og:image" content="https://cerxa.polarity.sh"/>
+    -->
+    <meta property="og:description" content="WebGL-Powered Volumetric Raytracing Engine" />
+    <meta property="og:url" content= "https://cerxa.polarity.sh"/> 
     <meta property="og:type" content="website"/>
+    <script type="text/javascript" src="dat.gui.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/stats.js"></script>
 
-    <title>Raymarched fractals</title>
+    <title>CERXA Engine</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
         body {
             margin: 0;
-            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: "Trebuchet MS", sans-serif;
+        }
+        .canvas-wrapper {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgb(0, 0, 127.5);
+            display: flex;
+            justify-content: center;
+        }
+        .canvas-overlay {
+            position: absolute;
+            z-index: 100;
+            bottom: 0;
+            right: 0;
+            padding: .5rem 1rem;
+            color: #ffffff;
         }
         #canvas {
-            float: left;
-            height: 100vh;
-            width: 100vh;
+            height: 100vmin;
+            width: 100vmin;
         }
-        #ui{
-            word-wrap: normal;
+        .ui{
             text-align: center;
-            float: left;
         }
-        #title-wrapper{
-            font-family: "Trebuchet MS", sans-serif;
+        ul {
+            display: table; 
+            margin: 0 auto;
+            text-align: left;
+            list-style-position: inside
+        }
+        .title-wrapper{
             margin-top: 30px;
+        }
+        .footer {
+            width: 100vw;
+            display: flex;
+            justify-content: space-between;
+            padding: 1rem;
         }
     </style>
 </head>
-<body> 
-    <canvas id = "canvas">
-        Your browser does not currently support HTML5. <br> Please try Chrome, Firefox, or Edge.
-    </canvas>
-    <div id = "ui">
-        <div id = "title-wrapper">
-            <h1>Raymarched Fractals Demo</h1>
-            <p>Collection of cool 3D fractals.</p>
-            <p>Rendered in WebGL, with boilerplate help from my own WebGL library <a href = "https://www.github.com/1e9end/Impact">Impact</a></p>
-            <p>Rendering algorithms all self written using Linear Algebra & light tracing techniques.</p>
-            <p>Includes: Ambient lighting, Specular lighting, Dynamic Camera & Scale, Hard shadows, (occlusion to come)</p>
+<body>
+    <div class="canvas-wrapper">
+        <canvas id = "canvas">
+            Your browser does not currently support HTML5. <br> Please try Chrome, Firefox, or Edge.
+        </canvas>
+        <div class="canvas-overlay">
+            CERXA &#9660;
+        </div>
+    </div>
+    <div class = "ui">
+        <div class = "title-wrapper">
+            <h1>CERXA Engine</h1>
+            <p>WebGL Rasterization & Volumetric Raytracing Engine</p>
+            <p>From-scratch shaders and light-tracing algorithms written in GLSL with my WebGL boilerplate library <a href = "https://www.github.com/polarr/Impact">Impact</a>.</p>
+            <h3>Features:</h3>
+            <ul>
+                <li>Diffuse, Ambient, Specular Lighting</li>
+                <li>Dynamic Camera & Scale</li>
+                <li>Hard Shadows</li>
+            </ul>
         <div>
-        <select name="fractals" id="fractals" onchange="updateFractal()">
-            <option value="0">Sierpenski Pyramid</option>
-            <option value="1">Mandelbox</option>
-            <option value="2">Mandelbulb</option>
-            <option value="3">Menger Sponge</option>
-        </select>
+    </div>
+    <div class = "footer">
+        <span>
+            &copy; 2020-present
+        </span>
+        <span>
+            ~<a href = "https://polarity.sh">polarity</a>
+        </span>
     </div>
 </body>
 <script id = "vts" type = "vertex-shader">
@@ -77,6 +122,8 @@
     uniform int fractal;
     uniform float camZ;
     uniform float THICC;
+    uniform float specularExp;
+    uniform float lightAngle;
     
     float PI = 3.14;
     float EPSILON = 0.001;
@@ -225,19 +272,20 @@
         }
     }
 
+    float NORM_EPSILON = 0.001;
     vec3 approxNormal(vec3 p)
     {
     	return normalize(vec3(
-    		DE(p + vec3(EPSILON, 0, 0)) - DE(p - vec3(EPSILON, 0, 0)),
-    		DE(p + vec3(0, EPSILON, 0)) - DE(p - vec3(0, EPSILON, 0)),
-    		DE(p + vec3(0, 0, EPSILON)) - DE(p - vec3(0, 0, EPSILON))));
+    		DE(p + vec3(NORM_EPSILON, 0, 0)) - DE(p - vec3(NORM_EPSILON, 0, 0)),
+    		DE(p + vec3(0, NORM_EPSILON, 0)) - DE(p - vec3(0, NORM_EPSILON, 0)),
+    		DE(p + vec3(0, 0, NORM_EPSILON)) - DE(p - vec3(0, 0, NORM_EPSILON))));
     }
 
     float hardshadow (vec3 origin, vec3 direction, float smoothness){
         float distance = EPSILON;
         float light = 1.0;
         float eps = 0.1;
-        for (float iters = 0.0; iters < 100.0; ++iters){
+        for (float iters = 0.0; iters < 200.0; ++iters){
             vec3 pos = origin + distance * direction;
             float nextDistance = DE(pos);
             distance += nextDistance;
@@ -261,11 +309,11 @@
                 float diffuse = max(0.0, dot(normal, light)); 
                 // https://learnopengl.com/Lighting/Basic-Lighting
                 vec3 reflected = reflect(direction, normal);
-                float specular = pow(max(dot(reflected, light), 0.0), 16.0); 
+                float specular = pow(max(dot(reflected, light), 0.0), specularExp); 
                 float shade = diffuse * 0.7 + specular * 0.3;
                 float occlusion = 1.0;
                 vec3 ambient = vec3(1.0, 1.0, 1.0);
-                return shade * ambient * occlusion * hardshadow(pos, light, .1);
+                return shade * ambient * occlusion * hardshadow(pos, light, 0.1);
             }
             if (distance > 100.0){
                 break;
@@ -279,7 +327,9 @@
         // window relative -> clip space
         vec2 uv = gl_FragCoord.xy * res - 1.0;
         // directional light
-        vec3 light = normalize(vec3(-1.0, 0.8, -1.0)); 
+        vec3 rot_axis = vec3(0.707107, 0, -0.707107);
+        vec3 rot = vec3(1.0, 0.8, 1.0);
+        vec3 light = normalize(rot * cos(lightAngle) + cross(rot_axis, rot) * sin(lightAngle) + rot_axis * dot(rot_axis, rot) * (1.0 - cos(lightAngle))); 
 
         //camera
         vec3 rotation =  vec3(0.0, mod(time, 360.0) * 30.0 + 45.0, 55.0);
@@ -287,7 +337,6 @@
 
         gl_FragColor = vec4(raymarch(rotate(cameraPosition, rotation), rotate(normalize(vec3(uv, 1.0)), rotation), light), 1.0);
     }
-    
 </script>
 <script src = "https://cdn.jsdelivr.net/gh/1e9end/Impact/main.js"></script><!-- My WebGL library -->
 <script src = "main.js"></script>
